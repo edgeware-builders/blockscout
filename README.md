@@ -80,10 +80,9 @@ export SECRET_KEY_BASE=[the secret that was just generated]
 Set up environment variables:
 ```
 export PORT=80
-export ETHEREUM_JSONRPC_VARIANT=geth
-export ETHEREUM_JSONRPC_HTTP_URL=http://beresheet2.edgewa.re:9933
-export ETHEREUM_JSONRPC_TRACE_URL=http://beresheet2.edgewa.re:9933
-export ETHEREUM_JSONRPC_WS_URL=ws://beresheet2.edgewa.re:9944
+export ETHEREUM_JSONRPC_VARIANT=parity
+export ETHEREUM_JSONRPC_HTTP_URL=http://beresheet1.edgewa.re:9933
+export ETHEREUM_JSONRPC_WS_URL=ws://beresheet1.edgewa.re:9944
 export BLOCKSCOUT_HOST=edgscan.com
 export DATABASE_URL=postgresql://blockscout:blockscout@localhost:5432/blockscout
 export NETWORK=EDG
@@ -94,6 +93,9 @@ export COINGECKO_COIN_ID=edgeware
 export RELEASE_LINK=https://github.com/edgeware-builders/edgscan
 export LOGO=/images/blockscout_logo.svg
 export LOGO_FOOTER=/images/blockscout_logo.svg
+export SHOW_PRICE_CHART=false
+export SHOW_TXS_CHART=true
+export ENABLE_TXS_STATS=true
 ```
 
 Start the server to make sure everything works:
@@ -116,9 +118,8 @@ Restart=on-failure
 Environment=MIX_ENV=prod
 Environment=LANG=en_US.UTF-8
 Environment=PORT=80
-Environment=ETHEREUM_JSONRPC_VARIANT=geth
+Environment=ETHEREUM_JSONRPC_VARIANT=parity
 Environment=ETHEREUM_JSONRPC_HTTP_URL=http://beresheet1.edgewa.re:9933
-Environment=ETHEREUM_JSONRPC_TRACE_URL=http://beresheet1.edgewa.re:9933
 Environment=ETHEREUM_JSONRPC_WS_URL=ws://beresheet1.edgewa.re:9944
 Environment=BLOCKSCOUT_HOST=edgscan.com
 Environment=DATABASE_URL=postgresql://blockscout:blockscout@localhost:5432/blockscout
@@ -130,6 +131,9 @@ Environment=COINGECKO_COIN_ID=edgeware
 Environment=RELEASE_LINK=https://github.com/edgeware-builders/edgscan
 Environment=LOGO=/images/blockscout_logo.svg
 Environment=LOGO_FOOTER=/images/blockscout_logo.svg
+Environment=SHOW_PRICE_CHART=false
+Environment=SHOW_TXS_CHART=true
+Environment=ENABLE_TXS_STATS=true
 Environment=SECRET_KEY_BASE=`mix phx.gen.secret`
 Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WorkingDirectory=`pwd`
