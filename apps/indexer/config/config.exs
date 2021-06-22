@@ -54,6 +54,8 @@ token_balance_on_demand_fetcher_threshold =
 config :indexer, Indexer.Fetcher.TokenBalanceOnDemand, threshold: token_balance_on_demand_fetcher_threshold
 
 config :indexer, Indexer.Fetcher.BlockReward.Supervisor, disabled?: true
+config :indexer, Indexer.Fetcher.InternalTransaction.Supervisor, disabled?: true
+config :indexer, Indexer.Fetcher.PendingTransaction.Supervisor, disabled?: true
 
 config :indexer, Indexer.Supervisor, enabled: System.get_env("DISABLE_INDEXER") != "true"
 
