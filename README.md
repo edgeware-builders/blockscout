@@ -4,6 +4,10 @@ This repository is a snapshot of the Blockscout EVM explorer for
 deployment to Edgeware. Please see the upstream Blockscout repo
 for the unmodified README: https://github.com/blockscout/blockscout
 
+For simplicity, this runbook does not include `sudo` instructions.
+You should make sure to use sudo where appropriate (assuming you're
+setting up Blockscout as a different user than root).
+
 ### Setup Instructions
 
 Install dependencies:
@@ -24,8 +28,8 @@ Make sure to run the commands in this order, or you may end up with Erlang OTP 2
 ```
 wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb && sudo dpkg -i erlang-solutions_2.0_all.deb
 apt update
-apt install elixir=1.11.1-1
-apt install esl-erlang=1:23.1-1
+apt install -y elixir=1.11.1-1
+apt install -y esl-erlang=1:23.1-1
 ```
 
 Set up a database:
@@ -35,9 +39,11 @@ psql postgres -c "CREATE ROLE blockscout WITH LOGIN PASSWORD 'blockscout'; ALTER
 psql postgres -h 127.0.0.1 -U blockscout -c "CREATE DATABASE blockscout"
 ```
 
+The password is 'blockscout', which you will have to enter at the end of the database setup.
+
 Now quit out of the postgres user shell.
 
-Install Blockscout:
+Install Blockscout (in the last step, Mix will prompt you to install Hex, which you should do):
 ```
 git clone https://github.com/poanetwork/blockscout
 cd blockscout
@@ -77,9 +83,10 @@ mix phx.gen.secret
 export SECRET_KEY_BASE=[the secret that was just generated]
 ```
 
-Set up environment variables:
+Set up environment variables. We start the server on port 4000 to add
+an SSL proxy later:
 ```
-export PORT=80
+export PORT=4000
 export ETHEREUM_JSONRPC_VARIANT=parity
 export ETHEREUM_JSONRPC_HTTP_URL=http://beresheet1.edgewa.re:9933
 export ETHEREUM_JSONRPC_WS_URL=ws://beresheet1.edgewa.re:9944
@@ -105,8 +112,7 @@ mix phx.server
 
 It will take some time to index the current chain.
 
-In the meantime, you can set up Blockscout to run automatically using systemd:
-
+In the meantime, you should set up Blockscout to run on boot using systemd:
 ```
 echo "[Unit]
 Description=Blockscout
@@ -117,7 +123,7 @@ Group=$USER
 Restart=on-failure
 Environment=MIX_ENV=prod
 Environment=LANG=en_US.UTF-8
-Environment=PORT=80
+Environment=PORT=4000
 Environment=ETHEREUM_JSONRPC_VARIANT=parity
 Environment=ETHEREUM_JSONRPC_HTTP_URL=http://beresheet1.edgewa.re:9933
 Environment=ETHEREUM_JSONRPC_WS_URL=ws://beresheet1.edgewa.re:9944
@@ -148,22 +154,73 @@ systemctl daemon-reload
 systemctl start blockscout.service
 ```
 
-To check the status:
+To check the status of the service:
 ```
 systemctl status blockscout.service
 ```
 
-Blockscout output will go to syslog, use `tail -f /var/log/syslog` to
+Blockscout output will go to syslog. Use `tail -f /var/log/syslog` to
 see the latest trailing output.
 
 If the service isn't running check that the WorkingDirectory is set
 correctly and mix is configured in the correct location.
 
+### Configuring SSL using Certbot
+
+Set the intended hostname of your server. This will be used in later steps:
+```
+export NAME=beresheet.edgscan.com
+```
+
+Install nginx:
+```
+apt install -y certbot python3-certbot-nginx
+```
+
+Configure nginx:
+```
+echo "server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    server_name example.com www.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_bind \$server_addr;
+        proxy_buffering off;
+    }
+}" > /etc/nginx/sites-enabled/default
+```
+
+Restart nginx with the new config:
+```
+nginx -t && nginx -s reload
+```
+
+Start the certbot process for getting a new certificate:
+```
+certbot --nginx -d $NAME
+```
+
+Set up a crontab to renew your Certbot certificate:
+```
+crontab -e
+```
+
+Add this line to the crontab:
+```
+0 12 * * * /usr/bin/certbot renew --quiet
+```
+
 ### Known Issues
 
 * Internal transactions are not indexed because the API call is not
-  supported. This may require a new RPC module to be added to the
-  Edgeware node, or a node to be set up with RPC methods set to "Unsafe".
+  provided by the current version of the Frontier EVM runtime used
+  by Edgeware.
 * The libsecp256k1 package does not compile correctly on Linux, which
   causes "Failed to load NIF library" errors. This is a known issue:
   https://github.com/exthereum/exth_crypto/issues/8
