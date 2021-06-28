@@ -10,6 +10,8 @@ setting up Blockscout as a different user than root).
 
 ### Setup Instructions
 
+Recommended server configuration: Minimum of 2048 MB of RAM, 50GB of disk space.
+
 Install dependencies:
 ```
 apt update
@@ -103,6 +105,7 @@ export LOGO_FOOTER=/images/blockscout_logo.svg
 export SHOW_PRICE_CHART=false
 export SHOW_TXS_CHART=true
 export ENABLE_TXS_STATS=true
+export SUPPORTED_CHAINS='[ {"title": "Edgeware", "url": "https://mainnet.edgscan.com"}, {"title": "Beresheet", "url": "https://beresheet.edgscan.com", "test_net?": true }]'
 ```
 
 Start the server to make sure everything works:
@@ -141,6 +144,7 @@ Environment=SHOW_PRICE_CHART=false
 Environment=SHOW_TXS_CHART=true
 Environment=ENABLE_TXS_STATS=true
 Environment=SECRET_KEY_BASE=`mix phx.gen.secret`
+Environment=SUPPORTED_CHAINS='[ {\"title\": \"Edgeware\", \"url\": \"https://mainnet.edgscan.com\"}, {\"title\": \"Beresheet\", \"url\": \"https://beresheet.edgscan.com\", \"test_net?\": true }]'
 Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WorkingDirectory=`pwd`
 ExecStart=mix phx.server
