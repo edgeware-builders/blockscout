@@ -47,7 +47,7 @@ Now quit out of the postgres user shell.
 
 Install Blockscout (in the last step, Mix will prompt you to install Hex, which you should do):
 ```
-git clone https://github.com/poanetwork/blockscout
+git clone https://github.com/edgeware-builders/blockscout
 cd blockscout
 mix do deps.get, local.rebar --force, deps.compile, compile
 ```
@@ -138,8 +138,8 @@ Environment=CHAIN_ID=2022
 Environment=COIN=EDG
 Environment=COINGECKO_COIN_ID=edgeware
 Environment=RELEASE_LINK=https://github.com/edgeware-builders/edgscan
-Environment=LOGO=/images/blockscout_logo.svg
-Environment=LOGO_FOOTER=/images/blockscout_logo.svg
+Environment=LOGO=/images/edgeware_logo.svg
+Environment=LOGO_FOOTER=/images/edgeware_logo.svg
 Environment=SHOW_PRICE_CHART=false
 Environment=SHOW_TXS_CHART=true
 Environment=ENABLE_TXS_STATS=true
