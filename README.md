@@ -62,7 +62,7 @@ Build the web app:
 ```
 cd apps/block_scout_web/assets
 npm install
-node_modules/webpack/bin/webpack.js --mode production
+node --max_old_space_size=4096 node_modules/webpack/bin/webpack.js --mode production
 cd -
 ```
 
