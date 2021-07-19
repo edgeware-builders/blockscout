@@ -58,7 +58,13 @@ export DATABASE_URL=postgresql://blockscout:blockscout@localhost:5432/blockscout
 mix do ecto.create, ecto.migrate
 ```
 
-Build the web app:
+Install npm dependencies for the explorer. This is required for contract verification:
+```
+cd apps/explorer
+npm install
+```
+
+OPTIONAL: Build the web app. By default, we include a set of compiled assets because webpack may have issues compiling a large build on some setups:
 ```
 cd apps/block_scout_web/assets
 npm install
