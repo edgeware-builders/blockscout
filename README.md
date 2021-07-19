@@ -63,7 +63,6 @@ Build the web app:
 cd apps/block_scout_web/assets
 npm install
 node_modules/webpack/bin/webpack.js --mode production
-cd -
 ```
 
 Build static assets for deployment:
@@ -72,9 +71,8 @@ mix phx.digest
 ```
 
 Enable HTTPS. The server must run with HTTPS.
-This will create a self-signed certificate for localhost:
+This will create a self-signed certificate for localhost, run this from the apps/block_scout_web directory:
 ```
-cd apps/block_scout_web
 mix phx.gen.cert blockscout blockscout.local
 cd -
 ```
