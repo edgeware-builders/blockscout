@@ -159,12 +159,17 @@ WantedBy=multi-user.target" > /etc/systemd/system/blockscout.service
 Start the service:
 ```
 systemctl daemon-reload
-systemctl start blockscout.service
+systemctl start blockscout
+```
+
+Make sure the service runs on startup:
+```
+systemctl enable blockscout
 ```
 
 To check the status of the service:
 ```
-systemctl status blockscout.service
+systemctl status blockscout
 ```
 
 Blockscout output will go to syslog. Use `tail -f /var/log/syslog` to
