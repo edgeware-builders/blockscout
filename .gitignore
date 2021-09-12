@@ -9,6 +9,9 @@
 /*.ez
 /logs
 
+# Generated static assets
+/apps/block_scout_web/priv/
+
 # Generated on crash by the VM
 erl_crash.dump
 
