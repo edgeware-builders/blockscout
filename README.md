@@ -192,6 +192,7 @@ apt install -y certbot python3-certbot-nginx
 
 Configure nginx:
 ```
+echo "Service Unavailable (502)" > /usr/share/nginx/html/502.txt
 echo "server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -205,6 +206,12 @@ echo "server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_bind \$server_addr;
         proxy_buffering off;
+    }
+
+    error_page 502 /502.html;
+    location = /502.html {
+        root /usr/share/nginx/html;
+        internal;
     }
 }" > /etc/nginx/sites-enabled/default
 ```
