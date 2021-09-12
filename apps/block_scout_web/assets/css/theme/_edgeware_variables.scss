@@ -9,6 +9,14 @@ $tile-type-block-color: $secondary;
 $tile-type-progress-bar-color: $secondary;
 a.tile-title { color: $secondary !important; }
 
+// header
+$dropdown-menu-item-hover-color: $primary !default;
+$dropdown-menu-item-hover-background: rgba($primary, .1) !default;
+$header-icon-border-color-hover: $primary;
+$header-links-color-active: $primary;
+$header-icon-color-hover: $primary;
+$header-icon-border-color-hover: $primary;
+
 // footer
 $footer-background-color: $primary;
 $footer-title-color: #fff;
