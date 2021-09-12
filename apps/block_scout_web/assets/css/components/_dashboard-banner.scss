@@ -22,13 +22,7 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   overflow: hidden;
   padding: 0;
   position: relative;
-  height: 100px;
-  @include media-breakpoint-down(sm) {
-      height: auto;
-  }
-  @include media-breakpoint-down(md) {
-      height: auto;
-  }
+  height: auto;
 }
 
 .dashboard-banner {
@@ -36,37 +30,29 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   justify-content: space-between;
   position: relative;
   z-index: 9;
-
-  @include media-breakpoint-down(sm) {
-    flex-direction: column;
-  }
+  flex-direction: column;
 }
 
 .dashboard-banner-network-graph {
   flex-grow: 1;
   padding: 15px 0 0 0;
 
-  @include media-breakpoint-down(md) {
-    display: flex;
-    flex-direction: column;
-    padding-top: 20px;
-  }
+  display: flex;
+  flex-direction: column;
+  padding-top: 20px;
 }
 
 .dashboard-banner-chart {
   flex-grow: 1;
   margin: 15px 0 20px 0;
-  max-width: 350px;
   position: relative;
   min-height: 100px;
   height: calc(100% - 86px);
 
-  @include media-breakpoint-down(md) {
-    flex-grow: 0;
-    margin-top: 20px;
-    margin-bottom: auto;
-    max-width: 100%;
-  }
+  flex-grow: 0;
+  margin-top: 20px;
+  margin-bottom: auto;
+  max-width: 100%;
 
   > canvas {
     max-height: 100%;
@@ -88,10 +74,8 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
     position: relative;
     padding-right: 12px;
 
-    @include media-breakpoint-down(md) {
-      display: flex;
-      flex-direction: row;
-    }
+    display: flex;
+    flex-direction: row;
 
     @media (max-width: 599px) {
       padding-top: 0;
@@ -173,62 +157,27 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   display: flex;
   height: $dashboard-banner-network-plain-container-height;
   justify-content: center;
-  margin: 15px 0 -15px 30px;
+  margin: 15px 0 -5px;
   max-width: 100%;
-  width: 750px;
+  width: 100%;
   position: relative;
 
-  @include media-breakpoint-down(lg) {
-    margin-top: 15px;
-  }
-
-  @include media-breakpoint-down(md) {
-    border-top-right-radius: 10px;
-    height: auto;
-    justify-content: flex-start;
-    margin-left: 0;
-    max-width: 100%;
-    padding: 20px 0 20px 20px;
-    box-shadow: 0 0 35px 0 rgba(0, 0, 0, 0.2);
-  }
-
-  @include media-breakpoint-down(sm) {
-    width: 100%;
-  }
-
-  &::after {
-    background-color: $dashboard-banner-network-plain-container-background-color;
-    bottom: 0;
-    content: "";
-    display: block;
-    height: $dashboard-banner-network-plain-container-height;
-    left: 0;
-    position: absolute;
-    width: 9999px;
-    z-index: -1;
-    box-shadow: 0 0 35px 0 rgba(0, 0, 0, 0.2);
-    border-top-left-radius: 10px;
-
-    @include media-breakpoint-down(md) {
-      display: none;
-    }
-  }
+  margin-top: 15px;
+  border-top-right-radius: 10px;
+  height: auto;
+  justify-content: flex-start;
+  margin-left: 0;
+  max-width: 100%;
+  padding: 20px 0 20px 20px;
+  box-shadow: 0 0 35px 0 rgba(0, 0, 0, 0.2);
 }
 
 .dashboard-banner-network-stats {
   column-gap: 25px;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
-
-  @include media-breakpoint-down(lg) {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    row-gap: 20px;
-  }
-
-  @include media-breakpoint-down(md) {
-    grid-template-columns: 1fr 1fr 1fr 1fr;
-    row-gap: 20px;
-  }
+  row-gap: 20px;
+  width: 100%;
 
   @include media-breakpoint-down(sm) {
     column-gap: 10px;
