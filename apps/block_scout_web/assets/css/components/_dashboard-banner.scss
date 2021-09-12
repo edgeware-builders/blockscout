@@ -12,17 +12,17 @@ $dashboard-stats-item-value-color: rgba(#fff, 0.8) !default;
 $dashboard-banner-chart-legend-label-color: #fff !default;
 $dashboard-banner-chart-legend-value-color: $dashboard-stats-item-value-color !default;
 $dashboard-stats-item-border-color: $primary !default;
-$dashboard-banner-network-plain-container-height: 205px;
+$dashboard-banner-network-plain-container-height: 85px;
 $dashboard-banner-chart-axis-font-color: $dashboard-stats-item-value-color !default;
 $dashboard-banner-chart-axis-font-color-alt: #333;
 
 .dashboard-banner-container {
   @include gradient-container();
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
   overflow: hidden;
   padding: 0;
   position: relative;
-  height: 264px;
+  height: 100px;
   @include media-breakpoint-down(sm) {
       height: auto;
   }
@@ -36,10 +36,6 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   justify-content: space-between;
   position: relative;
   z-index: 9;
-
-  @include media-breakpoint-between(lg, xl) {
-    height: 249px;
-  }
 
   @include media-breakpoint-down(sm) {
     flex-direction: column;
@@ -177,15 +173,13 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   display: flex;
   height: $dashboard-banner-network-plain-container-height;
   justify-content: center;
-  margin: 45px 0 -15px 30px;
+  margin: 0 0 -15px 30px;
   max-width: 100%;
-  padding: 30px 0 30px 60px;
   width: 750px;
   position: relative;
 
   @include media-breakpoint-down(lg) {
     margin-top: 15px;
-    width: 550px;
   }
 
   @include media-breakpoint-down(md) {
@@ -195,7 +189,6 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
     margin-left: 0;
     max-width: 100%;
     padding: 20px 0 20px 20px;
-    width: 250px;
     box-shadow: 0 0 35px 0 rgba(0, 0, 0, 0.2);
   }
 
@@ -228,12 +221,12 @@ $dashboard-banner-chart-axis-font-color-alt: #333;
   grid-template-columns: 1fr 1fr 1fr 1fr;
 
   @include media-breakpoint-down(lg) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     row-gap: 20px;
   }
 
   @include media-breakpoint-down(md) {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     row-gap: 20px;
   }
 
