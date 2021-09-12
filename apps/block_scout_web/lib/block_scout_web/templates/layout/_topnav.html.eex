@@ -14,24 +14,13 @@
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
       <ul class="navbar-nav">
         <%= if Application.get_env(:block_scout_web, BlockScoutWeb.WebRouter)[:enabled] do %>
-          <li class="nav-item dropdown">
-            <a class="nav-link topnav-nav-link dropdown-toggle" href="#" id="navbarBlocksDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <li class="nav-item">
+            <%= link to: block_path(@conn, :index), class: "nav-link topnav-nav-link #{tab_status("blocks", @conn.request_path)}" do %>
               <span class="nav-link-icon">
                 <%= render BlockScoutWeb.IconsView, "_block_icon.html" %>
               </span>
               <%= gettext("Blocks") %>
-            </a>
-            <div class="dropdown-menu" aria-labelledby="navbarBlocksDropdown">
-              <%= link to: block_path(@conn, :index), class: "dropdown-item #{tab_status("blocks", @conn.request_path)}" do %>
-                <%= gettext("Blocks") %>
-              <% end %>
-              <%= link to: uncle_path(@conn, :uncle), class: "dropdown-item #{tab_status("uncles", @conn.request_path)}" do %>
-                <%= gettext("Uncles") %>
-              <% end %>
-              <%= link to: reorg_path(@conn, :reorg), class: "dropdown-item #{tab_status("reorgs", @conn.request_path)}" do %>
-                <%= gettext("Forked Blocks (Reorgs)") %>
-              <% end %>
-            </div>
+            <% end %>
           </li>
           <li class="nav-item dropdown">            <li class="nav-item dropdown" id="activeTransactions">
             <a href="#" role="button" id="navbarTransactionsDropdown" class="nav-link topnav-nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -109,7 +98,7 @@
               <span class="nav-link-icon">
                 <%= render BlockScoutWeb.IconsView, "_api_icon.html" %>
               </span>
-              <%= gettext("APIs") %>
+              <%= gettext("API") %>
             </a>
             <div class="dropdown-menu" aria-labeledby="navbarTransactionsDropdown"> 
               <%= link(
@@ -121,11 +110,6 @@
                     gettext("RPC"),
                     class: "dropdown-item #{tab_status("api-docs", @conn.request_path)}",
                     to: api_url() <> api_docs_path(@conn, :index)
-                  ) %>
-              <%= link(
-                    gettext("Eth RPC"),
-                    class: "dropdown-item #{tab_status("eth-rpc-api-docs", @conn.request_path)}",
-                    to: api_url() <> api_docs_path(@conn, :eth_rpc)
                   ) %>
             </div>
           </li>
@@ -177,7 +161,6 @@
             <%= for %{url: url, title: title} <- test_nets(dropdown_nets()) do %> 
               <a class="dropdown-item" href="<%= url %>"><%= title %></a>
             <% end %> 
-            <a class="dropdown-item header division">Other Networks</a> 
             <%= for %{url: url, title: title} <- dropdown_other_nets() do %>  
               <a class="dropdown-item" href="<%= url %>"><%= title %></a>
             <% end %> 
