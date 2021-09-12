@@ -1,17 +1,1 @@
-/*
- * ATTENTION: The "eval" devtool has been used (maybe by default in mode: "development").
- * This devtool is not neither made for production nor for readable output files.
- * It uses "eval()" calls to create a separate source file in the browser devtools.
- * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
- * or disable the default devtool with "devtool: false".
- * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
- */
-/******/ (() => { // webpackBootstrap
-/*!****************************!*\
-  !*** ./css/main-page.scss ***!
-  \****************************/
-/*! unknown exports (runtime-defined) */
-/*! runtime requirements:  */
-eval("throw new Error(\"Module build failed (from ./node_modules/mini-css-extract-plugin/dist/loader.js):\\nModuleNotFoundError: Module not found: Error: Can't resolve '@tarekraafat/autocomplete.js/dist/css/autoComplete.01.css' in '/Users/raymond/Development/edgscan/apps/block_scout_web/assets/css'\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/Compilation.js:1586:28\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:648:13\\n    at eval (eval at create (/Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:10:1)\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:233:22\\n    at eval (eval at create (/Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:9:1)\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:357:22\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:116:11\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:577:24\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/webpack/lib/NormalModuleFactory.js:721:5\\n    at finishWithoutResolve (/Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/enhanced-resolve/lib/Resolver.js:296:11)\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/enhanced-resolve/lib/Resolver.js:362:15\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/enhanced-resolve/lib/Resolver.js:410:5\\n    at eval (eval at create (/Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:16:1)\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/enhanced-resolve/lib/Resolver.js:410:5\\n    at eval (eval at create (/Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/tapable/lib/HookCodeFactory.js:33:10), <anonymous>:27:1)\\n    at /Users/raymond/Development/edgscan/apps/block_scout_web/assets/node_modules/enhanced-resolve/lib/DescriptionFilePlugin.js:87:43\");\n\n//# sourceURL=webpack://blockscout/./css/main-page.scss?");
-/******/ })()
-;
+(()=>{"use strict"})();
