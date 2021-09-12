@@ -206,6 +206,10 @@ echo "server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_bind \$server_addr;
         proxy_buffering off;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
     }
 
     error_page 502 /502.html;
