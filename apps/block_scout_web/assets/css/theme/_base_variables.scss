@@ -215,7 +215,7 @@ $container-max-widths: (
 
 @include _assert-ascending($container-max-widths, "$container-max-widths");
 
-@media (min-width: 1200px) { 
+@media (min-width: 1200px) {
   .container {
     max-width: 1300px !important;
   }
@@ -261,7 +261,7 @@ $transition-cont: all 0.4s ease-in-out !default;
 // Font, line-height, and color for body text, headings, and more.
 
 // stylelint-disable value-keyword-case
-$font-family: Nunito, "Helvetica Neue", Arial, sans-serif,
+$font-family: Inter, Nunito, "Helvetica Neue", Arial, sans-serif,
   "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !default;
 $font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas,
   "Liberation Mono", "Courier New", monospace !default;
