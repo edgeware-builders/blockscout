@@ -99,6 +99,8 @@ defmodule Explorer.Chain do
   # keccak256("Error(string)")
   @revert_error_method_id "08c379a0"
 
+  @burn_address_hash_str "0x0000000000000000000000000000000000000000"
+
   @typedoc """
   The name of an association on the `t:Ecto.Schema.t/0`
   """
@@ -332,17 +334,17 @@ defmodule Explorer.Chain do
       the `block_number` and `index` that are passed.
 
   """
-  @spec address_to_mined_transactions_with_rewards(Hash.Address.t(), [paging_options | necessity_by_association_option]) ::
+  @spec address_to_transactions_with_rewards(Hash.Address.t(), [paging_options | necessity_by_association_option]) ::
           [
             Transaction.t()
           ]
-  def address_to_mined_transactions_with_rewards(address_hash, options \\ []) when is_list(options) do
+  def address_to_transactions_with_rewards(address_hash, options \\ []) when is_list(options) do
     paging_options = Keyword.get(options, :paging_options, @default_paging_options)
 
     if Application.get_env(:block_scout_web, BlockScoutWeb.Chain)[:has_emission_funds] do
       cond do
         Keyword.get(options, :direction) == :from ->
-          address_to_mined_transactions_without_rewards(address_hash, options)
+          address_to_transactions_without_rewards(address_hash, options)
 
         address_has_rewards?(address_hash) ->
           %{payout_key: block_miner_payout_address} = Reward.get_validator_payout_key_by_mining(address_hash)
@@ -350,14 +352,14 @@ defmodule Explorer.Chain do
           if block_miner_payout_address && address_hash == block_miner_payout_address do
             transactions_with_rewards_results(address_hash, options, paging_options)
           else
-            address_to_mined_transactions_without_rewards(address_hash, options)
+            address_to_transactions_without_rewards(address_hash, options)
           end
 
         true ->
-          address_to_mined_transactions_without_rewards(address_hash, options)
+          address_to_transactions_without_rewards(address_hash, options)
       end
     else
-      address_to_mined_transactions_without_rewards(address_hash, options)
+      address_to_transactions_without_rewards(address_hash, options)
     end
   end
 
@@ -367,7 +369,7 @@ defmodule Explorer.Chain do
     rewards_task =
       Task.async(fn -> Reward.fetch_emission_rewards_tuples(address_hash, paging_options, blocks_range) end)
 
-    [rewards_task | address_to_mined_transactions_tasks(address_hash, options)]
+    [rewards_task | address_to_transactions_tasks(address_hash, options)]
     |> wait_for_address_transactions()
     |> Enum.sort_by(fn item ->
       case item do
@@ -375,7 +377,9 @@ defmodule Explorer.Chain do
           {-emission_reward.block.number, 1}
 
         item ->
-          {-item.block_number, -item.index}
+          block_number = if item.block_number, do: -item.block_number, else: 0
+          index = if item.index, do: -item.index, else: 0
+          {block_number, index}
       end
     end)
     |> Enum.dedup_by(fn item ->
@@ -434,6 +438,7 @@ defmodule Explorer.Chain do
 
     options
     |> address_to_transactions_tasks_query()
+    |> Transaction.not_dropped_or_replaced_transacions()
     |> join_associations(necessity_by_association)
     |> Transaction.matching_address_queries_list(direction, address_hash)
     |> Enum.map(fn query -> Task.async(fn -> Repo.all(query) end) end)
@@ -678,6 +683,20 @@ defmodule Explorer.Chain do
     |> Enum.into(%{})
   end
 
+  def timestamp_by_block_hash(block_hashes) when is_list(block_hashes) do
+    query =
+      from(
+        block in Block,
+        where: block.hash in ^block_hashes and block.consensus == true,
+        group_by: block.hash,
+        select: {block.hash, block.timestamp}
+      )
+
+    query
+    |> Repo.all()
+    |> Enum.into(%{})
+  end
+
   @doc """
   Finds all `t:Explorer.Chain.Transaction.t/0`s in the `t:Explorer.Chain.Block.t/0`.
 
@@ -696,12 +715,58 @@ defmodule Explorer.Chain do
 
     options
     |> Keyword.get(:paging_options, @default_paging_options)
-    |> fetch_transactions()
+    |> fetch_transactions_in_ascending_order_by_index()
     |> join(:inner, [transaction], block in assoc(transaction, :block))
     |> where([_, block], block.hash == ^block_hash)
     |> join_associations(necessity_by_association)
     |> preload([{:token_transfers, [:token, :from_address, :to_address]}])
     |> Repo.all()
+  end
+
+  @doc """
+  Finds sum of gas_used for new (EIP-1559) txs belongs to block
+  """
+  @spec block_to_gas_used_by_1559_txs(Hash.Full.t()) :: non_neg_integer()
+  def block_to_gas_used_by_1559_txs(block_hash) do
+    query =
+      from(
+        tx in Transaction,
+        where: tx.block_hash == ^block_hash,
+        where: not is_nil(tx.max_priority_fee_per_gas),
+        select: sum(tx.gas_used)
+      )
+
+    result = Repo.one(query)
+    if result, do: result, else: 0
+  end
+
+  @doc """
+  Finds sum of priority fee for new (EIP-1559) txs belongs to block
+  """
+  @spec block_to_priority_fee_of_1559_txs(Hash.Full.t()) :: Decimal.t()
+  def block_to_priority_fee_of_1559_txs(block_hash) do
+    block = Repo.get_by(Block, hash: block_hash)
+    %Wei{value: base_fee_per_gas} = block.base_fee_per_gas
+
+    query =
+      from(
+        tx in Transaction,
+        where: tx.block_hash == ^block_hash,
+        where: not is_nil(tx.max_priority_fee_per_gas),
+        select:
+          sum(
+            fragment(
+              "Case When ? < ? Then ? Else ? End",
+              tx.max_fee_per_gas - ^base_fee_per_gas,
+              tx.max_priority_fee_per_gas,
+              (tx.max_fee_per_gas - ^base_fee_per_gas) * tx.gas_used,
+              tx.max_priority_fee_per_gas * tx.gas_used
+            )
+          )
+      )
+
+    result = Repo.one(query)
+    if result, do: result, else: 0
   end
 
   @doc """
@@ -935,7 +1000,7 @@ defmodule Explorer.Chain do
     json_rpc_named_arguments = Application.fetch_env!(:indexer, :json_rpc_named_arguments)
     variant = Keyword.fetch!(json_rpc_named_arguments, :variant)
 
-    if variant == EthereumJSONRPC.Ganache do
+    if variant == EthereumJSONRPC.Ganache || variant == EthereumJSONRPC.Arbitrum do
       true
     else
       with {:transactions_exist, true} <- {:transactions_exist, Repo.exists?(Transaction)},
@@ -1064,62 +1129,377 @@ defmodule Explorer.Chain do
     query =
       from(token in Token,
         where: ilike(token.symbol, ^name),
+        or_where: ilike(token.name, ^name),
         select: token.contract_address_hash
       )
 
     query
     |> Repo.all()
     |> case do
-      [] -> {:error, :not_found}
-      hashes -> {:ok, List.first(hashes)}
+      [] ->
+        {:error, :not_found}
+
+      hashes ->
+        if Enum.count(hashes) == 1 do
+          {:ok, List.first(hashes)}
+        else
+          {:error, :not_found}
+        end
+    end
+  end
+
+  defp prepare_search_term(string) do
+    case Regex.scan(~r/[a-zA-Z0-9]+/, string) do
+      [_ | _] = words ->
+        term_final =
+          words
+          |> Enum.map(fn [word] -> word <> ":*" end)
+          |> Enum.join(" & ")
+
+        {:some, term_final}
+
+      _ ->
+        :none
+    end
+  end
+
+  defp search_token_query(term) do
+    from(token in Token,
+      left_join: bridged in BridgedToken,
+      on: token.contract_address_hash == bridged.home_token_contract_address_hash,
+      where: fragment("to_tsvector(symbol || ' ' || name ) @@ to_tsquery(?)", ^term),
+      select: %{
+        address_hash: token.contract_address_hash,
+        tx_hash: fragment("CAST(NULL AS bytea)"),
+        block_hash: fragment("CAST(NULL AS bytea)"),
+        foreign_token_hash: bridged.foreign_token_contract_address_hash,
+        foreign_chain_id: bridged.foreign_chain_id,
+        type: "token",
+        name: token.name,
+        symbol: token.symbol,
+        holder_count: token.holder_count,
+        inserted_at: token.inserted_at,
+        block_number: 0
+      }
+    )
+  end
+
+  defp search_contract_query(term) do
+    from(smart_contract in SmartContract,
+      left_join: address in Address,
+      on: smart_contract.address_hash == address.hash,
+      where: fragment("to_tsvector(name ) @@ to_tsquery(?)", ^term),
+      select: %{
+        address_hash: smart_contract.address_hash,
+        tx_hash: fragment("CAST(NULL AS bytea)"),
+        block_hash: fragment("CAST(NULL AS bytea)"),
+        foreign_token_hash: fragment("CAST(NULL AS bytea)"),
+        foreign_chain_id: ^nil,
+        type: "contract",
+        name: smart_contract.name,
+        symbol: ^nil,
+        holder_count: ^nil,
+        inserted_at: address.inserted_at,
+        block_number: 0
+      }
+    )
+  end
+
+  defp search_address_query(term) do
+    case Chain.string_to_address_hash(term) do
+      {:ok, address_hash} ->
+        from(address in Address,
+          left_join: address_name in Address.Name,
+          on: address.hash == address_name.address_hash,
+          where: address.hash == ^address_hash,
+          select: %{
+            address_hash: address.hash,
+            tx_hash: fragment("CAST(NULL AS bytea)"),
+            block_hash: fragment("CAST(NULL AS bytea)"),
+            foreign_token_hash: fragment("CAST(NULL AS bytea)"),
+            foreign_chain_id: ^nil,
+            type: "address",
+            name: address_name.name,
+            symbol: ^nil,
+            holder_count: ^nil,
+            inserted_at: address.inserted_at,
+            block_number: 0
+          }
+        )
+
+      _ ->
+        nil
+    end
+  end
+
+  defp search_tx_query(term) do
+    case Chain.string_to_transaction_hash(term) do
+      {:ok, tx_hash} ->
+        from(transaction in Transaction,
+          where: transaction.hash == ^tx_hash,
+          select: %{
+            address_hash: fragment("CAST(NULL AS bytea)"),
+            tx_hash: transaction.hash,
+            block_hash: fragment("CAST(NULL AS bytea)"),
+            foreign_token_hash: fragment("CAST(NULL AS bytea)"),
+            foreign_chain_id: ^nil,
+            type: "transaction",
+            name: ^nil,
+            symbol: ^nil,
+            holder_count: ^nil,
+            inserted_at: transaction.inserted_at,
+            block_number: 0
+          }
+        )
+
+      _ ->
+        nil
+    end
+  end
+
+  defp search_block_query(term) do
+    case Chain.string_to_block_hash(term) do
+      {:ok, block_hash} ->
+        from(block in Block,
+          where: block.hash == ^block_hash,
+          select: %{
+            address_hash: fragment("CAST(NULL AS bytea)"),
+            tx_hash: fragment("CAST(NULL AS bytea)"),
+            block_hash: block.hash,
+            foreign_token_hash: fragment("CAST(NULL AS bytea)"),
+            foreign_chain_id: ^nil,
+            type: "block",
+            name: ^nil,
+            symbol: ^nil,
+            holder_count: ^nil,
+            inserted_at: block.inserted_at,
+            block_number: block.number
+          }
+        )
+
+      _ ->
+        case Integer.parse(term) do
+          {block_number, _} ->
+            from(block in Block,
+              where: block.number == ^block_number,
+              select: %{
+                address_hash: fragment("CAST(NULL AS bytea)"),
+                tx_hash: fragment("CAST(NULL AS bytea)"),
+                block_hash: block.hash,
+                foreign_token_hash: fragment("CAST(NULL AS bytea)"),
+                foreign_chain_id: ^nil,
+                type: "block",
+                name: ^nil,
+                symbol: ^nil,
+                holder_count: ^nil,
+                inserted_at: block.inserted_at,
+                block_number: block.number
+              }
+            )
+
+          _ ->
+            nil
+        end
+    end
+  end
+
+  def joint_search(paging_options, offset, string) do
+    case prepare_search_term(string) do
+      {:some, term} ->
+        tokens_query = search_token_query(term)
+        contracts_query = search_contract_query(term)
+        tx_query = search_tx_query(string)
+        address_query = search_address_query(string)
+        block_query = search_block_query(string)
+
+        basic_query =
+          from(
+            tokens in subquery(tokens_query),
+            union: ^contracts_query
+          )
+
+        query =
+          cond do
+            address_query ->
+              basic_query
+              |> union(^address_query)
+
+            tx_query ->
+              basic_query
+              |> union(^tx_query)
+              |> union(^block_query)
+
+            block_query ->
+              basic_query
+              |> union(^block_query)
+
+            true ->
+              basic_query
+          end
+
+        ordered_query =
+          from(items in subquery(query),
+            order_by: [desc_nulls_last: items.holder_count, asc: items.name, desc: items.inserted_at],
+            limit: ^paging_options.page_size,
+            offset: ^offset
+          )
+
+        paginated_ordered_query =
+          ordered_query
+          |> page_search_results(paging_options)
+
+        search_results = Repo.all(paginated_ordered_query)
+
+        search_results
+        |> Enum.map(fn result ->
+          result_checksummed_address_hash =
+            if result.address_hash do
+              result
+              |> Map.put(:address_hash, Address.checksum(result.address_hash))
+            else
+              result
+            end
+
+          result_checksummed =
+            if result_checksummed_address_hash.foreign_token_hash do
+              result_checksummed_address_hash
+              |> Map.put(:foreign_token_hash, Address.checksum(result_checksummed_address_hash.foreign_token_hash))
+            else
+              result_checksummed_address_hash
+            end
+
+          result_checksummed
+        end)
+
+      _ ->
+        []
     end
   end
 
   @spec search_token(String.t()) :: [Token.t()]
-  def search_token(word) do
-    term =
-      word
-      |> String.replace(~r/[^a-zA-Z0-9]/, " ")
-      |> String.replace(~r/ +/, " & ")
+  def search_token(string) do
+    case prepare_search_term(string) do
+      {:some, term} ->
+        query =
+          from(token in Token,
+            where: fragment("to_tsvector(symbol || ' ' || name ) @@ to_tsquery(?)", ^term),
+            select: %{
+              link: token.contract_address_hash,
+              symbol: token.symbol,
+              name: token.name,
+              holder_count: token.holder_count,
+              type: "token"
+            },
+            order_by: [desc: token.holder_count]
+          )
 
-    term_final = term <> ":*"
+        Repo.all(query)
 
-    query =
-      from(token in Token,
-        where: fragment("to_tsvector('english', symbol || ' ' || name ) @@ to_tsquery(?)", ^term_final),
-        select: %{
-          contract_address_hash: token.contract_address_hash,
-          symbol: token.symbol,
-          name:
-            fragment(
-              "'<b>' || coalesce(?, '') || '</b>' || ' (' || coalesce(?, '') || ') ' || '<i>' || coalesce(?::varchar(255), '') || ' holder(s)' || '</i>'",
-              token.name,
-              token.symbol,
-              token.holder_count
-            )
-        },
-        order_by: [desc: token.holder_count]
-      )
-
-    Repo.all(query)
+      _ ->
+        []
+    end
   end
 
   @spec search_contract(String.t()) :: [SmartContract.t()]
-  def search_contract(word) do
-    term =
-      word
-      |> String.replace(~r/[^a-zA-Z0-9]/, " ")
-      |> String.replace(~r/ +/, " & ")
+  def search_contract(string) do
+    case prepare_search_term(string) do
+      {:some, term} ->
+        query =
+          from(smart_contract in SmartContract,
+            left_join: address in Address,
+            on: smart_contract.address_hash == address.hash,
+            where: fragment("to_tsvector(name ) @@ to_tsquery(?)", ^term),
+            select: %{
+              link: smart_contract.address_hash,
+              name: smart_contract.name,
+              inserted_at: address.inserted_at,
+              type: "contract"
+            },
+            order_by: [desc: smart_contract.inserted_at]
+          )
 
-    term_final = term <> ":*"
+        Repo.all(query)
 
-    query =
-      from(smart_contract in SmartContract,
-        where: fragment("to_tsvector('english', name ) @@ to_tsquery(?)", ^term_final),
-        select: %{contract_address_hash: smart_contract.address_hash, name: smart_contract.name}
-      )
+      _ ->
+        []
+    end
+  end
 
-    Repo.all(query)
+  def search_tx(term) do
+    case Chain.string_to_transaction_hash(term) do
+      {:ok, tx_hash} ->
+        query =
+          from(transaction in Transaction,
+            where: transaction.hash == ^tx_hash,
+            select: %{
+              link: transaction.hash,
+              type: "transaction"
+            }
+          )
+
+        Repo.all(query)
+
+      _ ->
+        []
+    end
+  end
+
+  def search_address(term) do
+    case Chain.string_to_address_hash(term) do
+      {:ok, address_hash} ->
+        query =
+          from(address in Address,
+            left_join: address_name in Address.Name,
+            on: address.hash == address_name.address_hash,
+            where: address.hash == ^address_hash,
+            select: %{
+              name: address_name.name,
+              link: address.hash,
+              type: "address"
+            }
+          )
+
+        Repo.all(query)
+
+      _ ->
+        []
+    end
+  end
+
+  def search_block(term) do
+    case Chain.string_to_block_hash(term) do
+      {:ok, block_hash} ->
+        query =
+          from(block in Block,
+            where: block.hash == ^block_hash,
+            select: %{
+              link: block.hash,
+              block_number: block.number,
+              type: "block"
+            }
+          )
+
+        Repo.all(query)
+
+      _ ->
+        case Integer.parse(term) do
+          {block_number, _} ->
+            query =
+              from(block in Block,
+                where: block.number == ^block_number,
+                select: %{
+                  link: block.hash,
+                  block_number: block.number,
+                  type: "block"
+                }
+              )
+
+            Repo.all(query)
+
+          _ ->
+            []
+        end
+    end
   end
 
   @doc """
@@ -1634,7 +2014,7 @@ defmodule Explorer.Chain do
 
   @spec fetch_sum_coin_total_supply_minus_burnt() :: non_neg_integer
   def fetch_sum_coin_total_supply_minus_burnt do
-    {:ok, burn_address_hash} = string_to_address_hash("0x0000000000000000000000000000000000000000")
+    {:ok, burn_address_hash} = Chain.string_to_address_hash(@burn_address_hash_str)
 
     query =
       from(
@@ -2508,7 +2888,7 @@ defmodule Explorer.Chain do
         )
 
       query
-      |> Repo.one() || 0
+      |> Repo.one(timeout: :infinity) || 0
     else
       0
     end
@@ -3453,6 +3833,79 @@ defmodule Explorer.Chain do
     end
   end
 
+  @doc """
+  Updates a `t:SmartContract.t/0`.
+
+  Has the similar logic as create_smart_contract/1.
+  Used in cases when you need to update row in DB contains SmartContract, e.g. in case of changing 
+  status `partially verified` to `fully verified` (re-verify).
+  """
+  @spec update_smart_contract(map()) :: {:ok, SmartContract.t()} | {:error, Ecto.Changeset.t()}
+  def update_smart_contract(attrs \\ %{}, external_libraries \\ [], secondary_sources \\ []) do
+    address_hash = Map.get(attrs, :address_hash)
+
+    query =
+      from(
+        smart_contract in SmartContract,
+        where: smart_contract.address_hash == ^address_hash
+      )
+
+    query_sources =
+      from(
+        source in SmartContractAdditionalSource,
+        where: source.address_hash == ^address_hash
+      )
+
+    _delete_sources = Repo.delete_all(query_sources)
+
+    smart_contract = Repo.one(query)
+
+    smart_contract_changeset =
+      smart_contract
+      |> SmartContract.changeset(attrs)
+      |> Changeset.put_change(:external_libraries, external_libraries)
+
+    new_contract_additional_source = %SmartContractAdditionalSource{}
+
+    smart_contract_additional_sources_changesets =
+      if secondary_sources do
+        secondary_sources
+        |> Enum.map(fn changeset ->
+          new_contract_additional_source
+          |> SmartContractAdditionalSource.changeset(changeset)
+        end)
+      else
+        []
+      end
+
+    # Enforce ShareLocks tables order (see docs: sharelocks.md)
+    insert_contract_query =
+      Multi.new()
+      |> Multi.update(:smart_contract, smart_contract_changeset)
+
+    insert_contract_query_with_additional_sources =
+      smart_contract_additional_sources_changesets
+      |> Enum.with_index()
+      |> Enum.reduce(insert_contract_query, fn {changeset, index}, multi ->
+        Multi.insert(multi, "smart_contract_additional_source_#{Integer.to_string(index)}", changeset)
+      end)
+
+    insert_result =
+      insert_contract_query_with_additional_sources
+      |> Repo.transaction()
+
+    case insert_result do
+      {:ok, %{smart_contract: smart_contract}} ->
+        {:ok, smart_contract}
+
+      {:error, :smart_contract, changeset, _} ->
+        {:error, changeset}
+
+      {:error, :set_address_verified, message, _} ->
+        {:error, message}
+    end
+  end
+
   defp set_address_verified(repo, address_hash) do
     query =
       from(
@@ -3516,7 +3969,8 @@ defmodule Explorer.Chain do
         nil
 
       address ->
-        address_with_smart_contract = Repo.preload(address, [:smart_contract, :decompiled_smart_contracts])
+        address_with_smart_contract =
+          Repo.preload(address, [:smart_contract, :decompiled_smart_contracts, :smart_contract_additional_sources])
 
         if address_with_smart_contract.smart_contract do
           formatted_code = format_source_code_output(address_with_smart_contract.smart_contract)
@@ -3544,12 +3998,7 @@ defmodule Explorer.Chain do
     end
   end
 
-  defp format_source_code_output(smart_contract) do
-    SmartContract.add_submitted_comment(
-      smart_contract.contract_source_code,
-      smart_contract.inserted_at
-    )
-  end
+  defp format_source_code_output(smart_contract), do: smart_contract.contract_source_code
 
   @doc """
   Finds metadata for verification of a contract from verified twins: contracts with the same bytecode
@@ -3685,7 +4134,47 @@ defmodule Explorer.Chain do
     end
   end
 
+  def smart_contract_fully_verified?(address_hash_str) when is_binary(address_hash_str) do
+    case string_to_address_hash(address_hash_str) do
+      {:ok, address_hash} ->
+        check_fully_verified(address_hash)
+
+      _ ->
+        false
+    end
+  end
+
+  def smart_contract_fully_verified?(address_hash) do
+    check_fully_verified(address_hash)
+  end
+
+  defp check_fully_verified(address_hash) do
+    query =
+      from(
+        smart_contract in SmartContract,
+        where: smart_contract.address_hash == ^address_hash
+      )
+
+    result = Repo.one(query)
+
+    if result, do: !result.partially_verified
+  end
+
+  def smart_contract_verified?(address_hash_str) when is_binary(address_hash_str) do
+    case string_to_address_hash(address_hash_str) do
+      {:ok, address_hash} ->
+        check_verified(address_hash)
+
+      _ ->
+        false
+    end
+  end
+
   def smart_contract_verified?(address_hash) do
+    check_verified(address_hash)
+  end
+
+  defp check_verified(address_hash) do
     query =
       from(
         smart_contract in SmartContract,
@@ -3698,6 +4187,12 @@ defmodule Explorer.Chain do
   defp fetch_transactions(paging_options \\ nil) do
     Transaction
     |> order_by([transaction], desc: transaction.block_number, desc: transaction.index)
+    |> handle_paging_options(paging_options)
+  end
+
+  defp fetch_transactions_in_ascending_order_by_index(paging_options) do
+    Transaction
+    |> order_by([transaction], desc: transaction.block_number, asc: transaction.index)
     |> handle_paging_options(paging_options)
   end
 
@@ -3816,6 +4311,9 @@ defmodule Explorer.Chain do
 
   defp page_transaction(query, %PagingOptions{key: nil}), do: query
 
+  defp page_transaction(query, %PagingOptions{is_pending_tx: true} = options),
+    do: page_pending_transaction(query, options)
+
   defp page_transaction(query, %PagingOptions{key: {block_number, index}}) do
     where(
       query,
@@ -3827,6 +4325,23 @@ defmodule Explorer.Chain do
 
   defp page_transaction(query, %PagingOptions{key: {index}}) do
     where(query, [transaction], transaction.index < ^index)
+  end
+
+  defp page_search_results(query, %PagingOptions{key: nil}), do: query
+
+  # credo:disable-for-next-line
+  defp page_search_results(query, %PagingOptions{
+         key: {_address_hash, _tx_hash, _block_hash, holder_count, name, inserted_at, item_type}
+       }) do
+    where(
+      query,
+      [item],
+      (item.holder_count < ^holder_count and item.type == ^item_type) or
+        (item.holder_count == ^holder_count and item.name > ^name and item.type == ^item_type) or
+        (item.holder_count == ^holder_count and item.name == ^name and item.inserted_at < ^inserted_at and
+           item.type == ^item_type) or
+        item.type != ^item_type
+    )
   end
 
   @doc """
@@ -3959,14 +4474,17 @@ defmodule Explorer.Chain do
   def uncataloged_token_transfer_block_numbers do
     query =
       from(l in Log,
-        join: t in assoc(l, :transaction),
-        left_join: tf in TokenTransfer,
-        on: tf.transaction_hash == l.transaction_hash and tf.log_index == l.index,
+        as: :log,
         where: l.first_topic == unquote(TokenTransfer.constant()),
-        where: is_nil(tf.transaction_hash) and is_nil(tf.log_index),
-        where: not is_nil(t.block_hash),
-        select: t.block_number,
-        distinct: t.block_number
+        where:
+          not exists(
+            from(tf in TokenTransfer,
+              where: tf.transaction_hash == parent_as(:log).transaction_hash,
+              where: tf.log_index == parent_as(:log).index
+            )
+          ),
+        select: l.block_number,
+        distinct: l.block_number
       )
 
     Repo.stream_reduce(query, [], &[&1 | &2])
@@ -6360,6 +6878,59 @@ defmodule Explorer.Chain do
 
       _ ->
         {:error, "An incorrect input date provided. It should be in ISO 8601 format (yyyy-mm-dd)."}
+    end
+  end
+
+  @spec get_token_transfer_type(TokenTransfer.t()) ::
+          :token_burning | :token_minting | :token_spawning | :token_transfer
+  def get_token_transfer_type(transfer) do
+    {:ok, burn_address_hash} = Chain.string_to_address_hash(@burn_address_hash_str)
+
+    cond do
+      transfer.to_address_hash == burn_address_hash && transfer.from_address_hash !== burn_address_hash ->
+        :token_burning
+
+      transfer.to_address_hash !== burn_address_hash && transfer.from_address_hash == burn_address_hash ->
+        :token_minting
+
+      transfer.to_address_hash == burn_address_hash && transfer.from_address_hash == burn_address_hash ->
+        :token_spawning
+
+      true ->
+        :token_transfer
+    end
+  end
+
+  @spec get_token_icon_url_by(String.t(), String.t()) :: String.t() | nil
+  def get_token_icon_url_by(chain_id, address_hash) do
+    chain_name =
+      case chain_id do
+        "1" ->
+          "ethereum"
+
+        "99" ->
+          "poa"
+
+        "100" ->
+          "xdai"
+
+        _ ->
+          nil
+      end
+
+    if chain_name do
+      try_url =
+        "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/#{chain_name}/assets/#{address_hash}/logo.png"
+
+      %HTTPoison.Response{status_code: status_code} = HTTPoison.get!(try_url)
+
+      if status_code == 200 do
+        try_url
+      else
+        nil
+      end
+    else
+      nil
     end
   end
 end

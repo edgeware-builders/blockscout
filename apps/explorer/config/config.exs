@@ -21,7 +21,8 @@ config :explorer,
     if(System.get_env("DISABLE_WEBAPP") != "true",
       do: Explorer.Chain.Events.SimpleSender,
       else: Explorer.Chain.Events.DBSender
-    )
+    ),
+  enabled_1559_support: System.get_env("ENABLE_1559_SUPPORT") == "true"
 
 config :explorer, Explorer.Counters.AverageBlockTime,
   enabled: true,
@@ -103,6 +104,14 @@ config :explorer, Explorer.Counters.TokenTransfersCounter,
   enable_consolidation: true
 
 config :explorer, Explorer.Counters.AddressTransactionsCounter,
+  enabled: true,
+  enable_consolidation: true
+
+config :explorer, Explorer.Counters.BlockBurnedFeeCounter,
+  enabled: true,
+  enable_consolidation: true
+
+config :explorer, Explorer.Counters.BlockPriorityFeeCounter,
   enabled: true,
   enable_consolidation: true
 
@@ -245,7 +254,7 @@ config :explorer, Explorer.ThirdPartyIntegrations.Sourcify,
   server_url: System.get_env("SOURCIFY_SERVER_URL") || "https://sourcify.dev/server",
   enabled: System.get_env("ENABLE_SOURCIFY_INTEGRATION") == "true",
   chain_id: System.get_env("CHAIN_ID"),
-  repo_url: System.get_env("SOURCIFY_REPO_URL") || "https://repo.sourcify.dev/contracts/full_match/"
+  repo_url: System.get_env("SOURCIFY_REPO_URL") || "https://repo.sourcify.dev/contracts"
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

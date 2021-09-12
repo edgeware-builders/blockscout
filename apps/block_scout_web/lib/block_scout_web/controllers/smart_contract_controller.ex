@@ -26,11 +26,14 @@ defmodule BlockScoutWeb.SmartContractController do
 
       functions =
         if action == "write" do
-          if contract_type == "proxy" do
-            Writer.write_functions_proxy(implementation_address_hash_string)
-          else
-            Writer.write_functions(address_hash)
-          end
+          write_functions =
+            if contract_type == "proxy" do
+              Writer.write_functions_proxy(implementation_address_hash_string)
+            else
+              Writer.write_functions(address_hash)
+            end
+
+          Enum.filter(write_functions, fn x -> x["type"] != "error" end)
         else
           if contract_type == "proxy" do
             Reader.read_only_functions_proxy(address_hash, implementation_address_hash_string)
@@ -93,11 +96,12 @@ defmodule BlockScoutWeb.SmartContractController do
          {:ok, address} <- Chain.find_contract_address(address_hash, address_options, true) do
       contract_type = if Chain.proxy_contract?(address.hash, address.smart_contract.abi), do: :proxy, else: :regular
 
-      outputs =
-        Reader.query_function(
+      %{output: outputs, names: names} =
+        Reader.query_function_with_names(
           address_hash,
           %{method_id: params["method_id"], args: params["args"]},
-          contract_type
+          contract_type,
+          params["function_name"]
         )
 
       conn
@@ -107,7 +111,8 @@ defmodule BlockScoutWeb.SmartContractController do
         "_function_response.html",
         function_name: params["function_name"],
         method_id: params["method_id"],
-        outputs: outputs
+        outputs: outputs,
+        names: names
       )
     else
       :error ->
